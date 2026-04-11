@@ -1,0 +1,13 @@
+# Thư mục môi trường ảo (Nặng và không cần thiết)
+venv/
+ENV/
+env/
+
+# Python compiled files (Rác sinh ra khi chạy code)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE settings
+.vscode/
+.idea/
