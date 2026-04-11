@@ -21,22 +21,50 @@ def fcfs_algorithm(processes):
         current_time = p['finish_time']
     return data
 
-def priority_non_preemptive(processes):
-    """Giải thuật Ưu tiên - Không độc chiếm"""
+def priority_non_preemptive(processes, aging_enabled=False, threshold=5):
+    """
+    Giải thuật Ưu tiên - Không độc chiếm (Tích hợp chống đói tài nguyên - Aging)
+    """
     data = [p.copy() for p in processes]
     n, current_time, completed, gantt = len(data), 0, [], []
+    
     while len(completed) < n:
+        # Lấy danh sách tiến trình đã đến và chưa chạy xong
         ready = [p for p in data if p['arrival_time'] <= current_time and p not in completed]
+        
         if ready:
-            p = min(ready, key=lambda x: (x['priority'], x['arrival_time']))
+            # --- LOGIC AGING CHO NON-PREEMPTIVE ---
+            if aging_enabled:
+                for p in ready:
+                    # Tính thời gian thực tế tiến trình đã phải đứng chờ
+                    wait_time = current_time - p['arrival_time']
+                    # Tính số bậc được tăng (Chia lấy phần nguyên)
+                    boost = wait_time // threshold
+                    # Cập nhật ưu tiên mới (Không vượt quá mức 1)
+                    p['current_priority'] = max(1, p['priority'] - int(boost))
+            else:
+                for p in ready:
+                    p['current_priority'] = p['priority'] # Giữ nguyên nếu tắt Aging
+
+            # --- CHỌN TIẾN TRÌNH CHẠY ---
+            # So sánh dựa trên ưu tiên hiện tại (current_priority)
+            p = min(ready, key=lambda x: (x['current_priority'], x['arrival_time']))
+            
+            # Ghi nhận kết quả
             p['start_time'] = current_time
             p['finish_time'] = current_time + p['burst_time']
             p['turnaround_time'] = p['finish_time'] - p['arrival_time']
             p['waiting_time'] = p['turnaround_time'] - p['burst_time']
+            
             gantt.append({"id": p['id'], "start": current_time, "end": p['finish_time']})
+            
+            # CPU nhảy cóc đến thẳng thời điểm chạy xong
             current_time = p['finish_time']
             completed.append(p)
-        else: current_time += 1
+        else: 
+            # CPU rảnh, tăng thời gian lên 1
+            current_time += 1
+            
     return completed, gantt
 
 def priority_preemptive(processes, aging_enabled=False, threshold=5):
@@ -48,40 +76,43 @@ def priority_preemptive(processes, aging_enabled=False, threshold=5):
     data = [p.copy() for p in processes]
     for p in data: 
         p['rem'] = p['burst_time']
-        p['wait_time_count'] = 0  # Bộ đếm thời gian bị "bỏ đói"
-        p['current_priority'] = p['priority'] # Sử dụng bản sao ưu tiên để có thể thay đổi
+        p['wait_time_count'] = 0  
+        p['current_priority'] = p['priority'] 
         
     n, current_time, completed_count, completed_list, gantt = len(data), 0, 0, [], []
     last_id = None
     
     while completed_count < n:
-        # Lấy danh sách các tiến trình đã đến và chưa xong
         ready = [p for p in data if p['arrival_time'] <= current_time and p['rem'] > 0]
         
         if ready:
-            # --- LOGIC AGING ---
-            if aging_enabled:
-                for p in ready:
-                    p['wait_time_count'] += 1
-                    # Nếu chờ đủ ngưỡng (threshold) và chưa đạt ưu tiên cao nhất (1)
-                    if p['wait_time_count'] >= threshold:
-                        if p['current_priority'] > 1: 
-                            p['current_priority'] -= 1
-                        p['wait_time_count'] = 0 # Reset đếm sau khi đã tăng cấp
-
-            # --- TÌM TIẾN TRÌNH CHẠY ---
-            # So sánh dựa trên current_priority (đã qua aging) thay vì priority gốc
+            # 1. Tìm tiến trình chạy (Dựa trên current_priority)
             p_selected = min(ready, key=lambda x: (x['current_priority'], x['arrival_time']))
             
+            # 2. Xử lý biểu đồ Gantt
             if last_id != p_selected['id']:
                 gantt.append({"id": p_selected['id'], "start": current_time, "end": current_time + 1})
             else: 
                 gantt[-1]['end'] += 1
                 
             p_selected['rem'] -= 1
-            p_selected['wait_time_count'] = 0 # Tiến trình đang chạy thì không bị tính là "đợi"
             last_id = p_selected['id']
             
+            # 3. LOGIC AGING ĐÃ ĐƯỢC FIX CỰC CHUẨN
+            if aging_enabled:
+                for p in ready:
+                    # Kẻ nào KHÔNG được chạy mới bị cộng thời gian đợi
+                    if p['id'] != p_selected['id']: 
+                        p['wait_time_count'] += 1
+                        if p['wait_time_count'] >= threshold:
+                            if p['current_priority'] > 1: 
+                                p['current_priority'] -= 1
+                            p['wait_time_count'] = 0
+                    else:
+                        # Đang chạy thì không tính là đợi
+                        p['wait_time_count'] = 0
+
+            # 4. Kiểm tra hoàn thành
             if p_selected['rem'] == 0:
                 completed_count += 1
                 p_selected['finish_time'] = current_time + 1

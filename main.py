@@ -54,16 +54,16 @@ def run():
         # 1. Chạy Priority theo menu chọn
         mode = algo_var.get()
         if mode == "Priority (Non-Preemptive)":
-            res_p, gantt = priority_non_preemptive(raw_data)
+            # Truyền tham số Aging vào hàm Không độc chiếm
+            res_p, gantt = priority_non_preemptive(raw_data, aging_enabled=is_aging_enabled, threshold=aging_threshold)
         else:
-            # Truyền tham số Aging vào hàm độc chiếm
             res_p, gantt = priority_preemptive(raw_data, aging_enabled=is_aging_enabled, threshold=aging_threshold)
         
         # 2. Chạy ngầm FCFS để so sánh
         res_f = fcfs_algorithm(raw_data)
         
         # 3. Vẽ biểu đồ Gantt
-        draw_gantt_chart(chart_frame, raw_data, gantt)
+        draw_gantt_chart(chart_frame, raw_data, gantt, aging_enabled=is_aging_enabled, threshold=aging_threshold)
         
         # 4. Tính toán các chỉ số
         p_wt, p_tat = calculate_metrics(res_p)

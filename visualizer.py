@@ -1,12 +1,11 @@
-# visualizer.py - Hiển thị mọi mốc Arrival Time
+# visualizer.py
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-def draw_gantt_chart(parent_frame, raw_data, gantt_data):
+def draw_gantt_chart(parent_frame, raw_data, gantt_data, aging_enabled=False, threshold=5):
     for widget in parent_frame.winfo_children(): widget.destroy()
     
-    # 1. LẤY TẤT CẢ CÁC MỐC THỜI GIAN: Bắt đầu, Kết thúc và cả thời điểm TIẾN TRÌNH ĐẾN
     event_times = sorted(list(set(
         [0] + 
         [s['start'] for s in gantt_data] + 
@@ -14,63 +13,73 @@ def draw_gantt_chart(parent_frame, raw_data, gantt_data):
         [p['arrival_time'] for p in raw_data]
     )))
     
-    fig, ax = plt.subplots(figsize=(10, 6)) # Tăng chiều cao để bảng Remaining không bị đè
+    fig, ax = plt.subplots(figsize=(10, 6.5)) # Tăng chiều cao thêm một chút
     colors = list(mcolors.TABLEAU_COLORS.values())
     unique_ids = list(set(p['id'] for p in raw_data))
     color_map = {pid: colors[i % len(colors)] for i, pid in enumerate(unique_ids)}
 
-    # 2. Vẽ biểu đồ Gantt (Giữ nguyên các khối màu)
     for s in gantt_data:
-        ax.broken_barh([(s['start'], s['end']-s['start'])], (30, 10), 
+        ax.broken_barh([(s['start'], s['end']-s['start'])], (35, 10), 
                        facecolors=color_map[s['id']], edgecolor='black', linewidth=1)
-        ax.text(s['start'] + (s['end']-s['start'])/2, 35, s['id'], 
+        ax.text(s['start'] + (s['end']-s['start'])/2, 40, s['id'], 
                 ha='center', va='center', color='white', fontweight='bold', fontsize=12)
 
-    # 3. LOGIC TÍNH TOÁN VÀ VẼ 3 DÒNG THÔNG TIN (TIME, ARRIVED, REMAINING)
     current_rem = {p['id']: p['burst_time'] for p in raw_data}
     
     for i in range(len(event_times)):
         t = event_times[i]
         
-        # Dòng 1: Time (Ngay dưới vạch kẻ)
-        ax.text(t, 25, str(t), ha='center', va='top', fontsize=10, fontweight='bold')
-        ax.axvline(x=t, ymin=0.4, ymax=0.6, color='black', linestyle='--', alpha=0.3) # Vạch kẻ phụ
+        ax.text(t, 30, str(t), ha='center', va='top', fontsize=10, fontweight='bold')
+        ax.axvline(x=t, ymin=0.3, ymax=0.7, color='black', linestyle='--', alpha=0.3)
 
-        # Dòng 2: Arrived Process (Ai đến tại thời điểm t)
         arrived = [p['id'] for p in raw_data if p['arrival_time'] == t]
         if arrived:
-            ax.text(t, 20, ", ".join(arrived), ha='center', va='top', fontsize=9, color='blue', fontweight='bold')
+            ax.text(t, 25, ", ".join(arrived), ha='center', va='top', fontsize=9, color='blue', fontweight='bold')
         
-        # Dòng 3: Remaining Time (Trạng thái tại mốc t)
-        status = []
-        # Sắp xếp theo ID để hiển thị P1, P2... cho gọn
+        status_rem = []
+        status_prio = [] # MẢNG MỚI: Chứa thông tin Priority
+        
         for p in sorted(raw_data, key=lambda x: x['id']):
             if p['arrival_time'] <= t and current_rem[p['id']] > 0:
-                status.append(f"{p['id']}({current_rem[p['id']]})")
+                # 1. Thêm vào mảng Remaining
+                status_rem.append(f"{p['id']}({current_rem[p['id']]})")
+                
+                # 2. TÍNH TOÁN AGING CHO DÒNG PRIORITY
+                current_prio = p['priority']
+                if aging_enabled:
+                    # Tính tổng thời gian đã được chạy từ lúc đến cho tới mốc t
+                    run_time = sum([min(s['end'], t) - max(s['start'], p['arrival_time']) 
+                                  for s in gantt_data if s['id'] == p['id'] and s['start'] < t])
+                    # Tính thời gian phải đứng chờ (Wait Time)
+                    wait_time = max(0, t - p['arrival_time'] - run_time)
+                    
+                    # Cộng điểm ưu tiên (giảm số) dựa trên số lần vượt threshold
+                    boost = int(wait_time // threshold)
+                    current_prio = max(1, p['priority'] - boost)
+                
+                status_prio.append(f"{p['id']}({current_prio})")
         
-        if status:
-            # Dùng \n để các tiến trình nằm dọc giống hình mẫu của Nhật
-            ax.text(t, 15, "\n".join(status), ha='center', va='top', fontsize=8, color='green')
+        if status_rem:
+            ax.text(t, 20, "\n".join(status_rem), ha='center', va='top', fontsize=8, color='green')
+        if status_prio:
+            ax.text(t, 10, "\n".join(status_prio), ha='center', va='top', fontsize=8, color='purple', fontweight='bold')
 
-        # CẬP NHẬT REMAINING TIME cho đoạn tiếp theo
         if i < len(event_times) - 1:
             next_t = event_times[i+1]
             duration = next_t - t
-            # Tìm xem trong khoảng [t, next_t], CPU đang chạy ai
             for s in gantt_data:
                 if s['start'] <= t and s['end'] >= next_t:
                     current_rem[s['id']] -= duration
                     break
 
-    # Cấu hình khung nhìn
     ax.set_xlim(-1, max(event_times) + 2)
-    ax.set_ylim(0, 50)
-    ax.axis('off') # Ẩn các trục mặc định
+    ax.set_ylim(0, 55)
+    ax.axis('off')
     
-    # Nhãn tiêu đề bên trái
-    ax.text(-0.5, 25, "Time:", ha='right', va='top', fontweight='bold')
-    ax.text(-0.5, 20, "Arrived:", ha='right', va='top', fontweight='bold')
-    ax.text(-0.5, 15, "Remaining:", ha='right', va='top', fontweight='bold')
+    ax.text(-0.5, 30, "Time:", ha='right', va='top', fontweight='bold')
+    ax.text(-0.5, 25, "Arrived:", ha='right', va='top', fontweight='bold')
+    ax.text(-0.5, 20, "Remaining:", ha='right', va='top', fontweight='bold')
+    ax.text(-0.5, 10, "Priority:", ha='right', va='top', fontweight='bold', color='purple') # THÊM NHÃN NÀY
 
     plt.tight_layout()
     canvas = FigureCanvasTkAgg(fig, master=parent_frame)
