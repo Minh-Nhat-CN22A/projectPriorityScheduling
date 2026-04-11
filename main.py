@@ -2,7 +2,7 @@
 import customtkinter as ctk
 from algorithms import *
 from ui_components import create_input_row
-from visualizer import draw_gantt_chart
+from visualizer import draw_gantt_chart, draw_comparison_chart
 
 app = ctk.CTk()
 app.title("Simulator Lập lịch Priority - Nhật's Project")
@@ -62,44 +62,42 @@ def run():
         # 2. Chạy ngầm FCFS để so sánh
         res_f = fcfs_algorithm(raw_data)
         
-        # 3. Vẽ biểu đồ Gantt
-        draw_gantt_chart(chart_frame, raw_data, gantt, aging_enabled=is_aging_enabled, threshold=aging_threshold)
+        # (Giữ nguyên phần đầu của hàm run()...)
+        
+        # 3. Vẽ biểu đồ Gantt (Vào Tab 1)
+        draw_gantt_chart(tab_gantt, raw_data, gantt, aging_enabled=is_aging_enabled, threshold=aging_threshold)
         
         # 4. Tính toán các chỉ số
         p_wt, p_tat = calculate_metrics(res_p)
         f_wt, f_tat = calculate_metrics(res_f)
         
-        # 5. Logic tính toán và chọn màu cho icon
+        # 5. Vẽ biểu đồ cột so sánh (Vào Tab 2)
+        draw_comparison_chart(chart_report_frame, p_wt, p_tat, f_wt, f_tat, mode)
+
+        # 6. Logic tính toán và Tự động đưa ra kết luận (AI-like)
         diff_wt = round(((f_wt - p_wt) / f_wt) * 100, 1) if f_wt != 0 else 0
         diff_tat = round(((f_tat - p_tat) / f_tat) * 100, 1) if f_tat != 0 else 0
 
-        if diff_wt >= 0:
-            status_wt = f"✅ Hiệu quả WT: Tốt hơn FCFS {diff_wt}%"
-        else:
-            status_wt = f"❌ Hiệu quả WT: Kém hơn FCFS {abs(diff_wt)}%"
-
-        if diff_tat >= 0:
-            status_tat = f"✅ Hiệu quả TAT: Tốt hơn FCFS {diff_tat}%"
-        else:
-            status_tat = f"❌ Hiệu quả TAT: Kém hơn FCFS {abs(diff_tat)}%"
-
-        if (diff_wt >= 0 and diff_tat >= 0):
+        # Phân tích điều kiện để đưa ra kết luận (Efficiency Gap Analysis)
+        if diff_wt > 0 and diff_tat > 0:
+            insight = "🌟 TỐI ƯU TOÀN DIỆN: Thuật toán Priority hiện tại vượt trội hơn FCFS ở cả hai chỉ số. Phù hợp cho hệ thống cần xử lý công việc quan trọng nhanh chóng mà không làm suy giảm năng suất tổng thể."
             final_color = "#2ECC71"
-        elif (diff_wt < 0 and diff_tat < 0):
+        elif diff_wt > 0 and diff_tat <= 0:
+            insight = "⚖️ ĐÁNH ĐỔI (TRADE-OFF): Priority giúp hệ thống phản hồi nhanh hơn (giảm WT) nhưng làm giảm năng suất tổng thể (TAT bị kéo dài do ngắt quãng hoặc có tiến trình dài). Phù hợp cho hệ thống tương tác trực tiếp cần độ nhạy cao."
+            final_color = "#F1C40F"
+        elif diff_wt < 0:
+            insight = "⚠️ KÉM HIỆU QUẢ: Priority đang hoạt động kém hơn FCFS. Nguyên nhân thường do 'Đảo ngược ưu tiên' (Tiến trình dài có ưu tiên cao cản trở tiến trình ngắn). Cần xem xét lại cách gán mức ưu tiên hoặc bật tính năng Aging."
             final_color = "#E74C3C"
         else:
-            final_color = "#F1C40F"
+            insight = "Tương đương nhau."
+            final_color = "white"
 
         comparison_text = (
-            f"📊 KẾT QUẢ SO SÁNH CHI TIẾT:\n"
-            f"{'—'*45}\n"
-            f"🔹 {mode}:\n"
-            f"   Avg WT: {p_wt}s  |  Avg TAT: {p_tat}s\n"
-            f"🔸 Giải thuật FCFS:\n"
-            f"   Avg WT: {f_wt}s  |  Avg TAT: {f_tat}s\n"
-            f"{'—'*45}\n"
-            f"{status_wt}\n"
-            f"{status_tat}"
+            f"📊 ĐỘ LỆCH HIỆU NĂNG (EFFICIENCY GAP):\n"
+            f"{'—'*50}\n"
+            f"👉 Hiệu quả WT : {'Tốt hơn' if diff_wt >= 0 else 'Kém hơn'} FCFS {abs(diff_wt)}%\n"
+            f"👉 Hiệu quả TAT: {'Tốt hơn' if diff_tat >= 0 else 'Kém hơn'} FCFS {abs(diff_tat)}%\n\n"
+            f"💡 KẾT LUẬN:\n{insight}"
         )
         
         compare_label.configure(text=comparison_text, text_color=final_color)
@@ -136,10 +134,23 @@ threshold_entry = ctk.CTkEntry(aging_frame, textvariable=threshold_var, width=50
 threshold_entry.pack(side="left", padx=5)
 # ----------------------------------------------
 
-compare_label = ctk.CTkLabel(app, text="Bấm CHẠY để xem phân tích so sánh", font=("Arial", 14, "bold"))
-compare_label.pack(pady=10)
+tabview = ctk.CTkTabview(app, width=1050, height=450)
+tabview.pack(pady=10, fill="both", expand=True, padx=20)
 
-chart_frame = ctk.CTkFrame(app, width=1000, height=400, fg_color="white")
-chart_frame.pack(pady=10, fill="both", expand=True)
+# Tạo 2 Tab
+tab_gantt = tabview.add("Biểu đồ Gantt & Timeline")
+tab_report = tabview.add("Báo cáo Hiệu năng (Comparison Report)")
+
+# Bố cục bên trong Tab "Báo cáo Hiệu năng"
+# Chia làm 2 phần: Trái (Text Kết luận) - Phải (Biểu đồ cột)
+report_text_frame = ctk.CTkFrame(tab_report, width=400, fg_color="transparent")
+report_text_frame.pack(side="left", fill="both", expand=False, padx=20, pady=20)
+
+compare_label = ctk.CTkLabel(report_text_frame, text="Bấm CHẠY để xem phân tích so sánh", 
+                             font=("Arial", 14, "bold"), justify="left", wraplength=350)
+compare_label.pack(pady=20, anchor="w")
+
+chart_report_frame = ctk.CTkFrame(tab_report, fg_color="white")
+chart_report_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
 app.mainloop()

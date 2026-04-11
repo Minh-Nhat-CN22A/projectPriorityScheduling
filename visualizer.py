@@ -85,3 +85,50 @@ def draw_gantt_chart(parent_frame, raw_data, gantt_data, aging_enabled=False, th
     canvas = FigureCanvasTkAgg(fig, master=parent_frame)
     canvas.draw()
     canvas.get_tk_widget().pack(fill="both", expand=True)
+    
+def draw_comparison_chart(parent_frame, p_wt, p_tat, f_wt, f_tat, mode_name):
+    """Vẽ biểu đồ cột so sánh WT và TAT giữa Priority và FCFS"""
+    for widget in parent_frame.winfo_children(): widget.destroy()
+    
+    fig, ax = plt.subplots(figsize=(8, 5))
+    
+    # Dữ liệu
+    labels = ['Average Waiting Time (WT)', 'Average Turnaround Time (TAT)']
+    priority_scores = [p_wt, p_tat]
+    fcfs_scores = [f_wt, f_tat]
+    
+    x = [0, 1]  # Vị trí các nhóm cột
+    width = 0.35  # Độ rộng của cột
+
+    # Vẽ cột
+    bars1 = ax.bar([i - width/2 for i in x], priority_scores, width, label=mode_name, color='#3498db') # Màu xanh dương
+    bars2 = ax.bar([i + width/2 for i in x], fcfs_scores, width, label='FCFS', color='#e74c3c') # Màu đỏ
+
+    # Định dạng biểu đồ
+    ax.set_ylabel('Thời gian (Giây)', fontweight='bold')
+    ax.set_title('BIỂU ĐỒ SO SÁNH HIỆU NĂNG THUẬT TOÁN', fontweight='bold', fontsize=14, pad=15)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontweight='bold')
+    ax.legend()
+
+    # Hiển thị con số trên đỉnh mỗi cột
+    def add_labels(bars):
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height}s',
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3),  # Đẩy text lên 3 points
+                        textcoords="offset points",
+                        ha='center', va='bottom', fontweight='bold')
+
+    add_labels(bars1)
+    add_labels(bars2)
+
+    # Ẩn viền trên và phải cho biểu đồ thanh thoát hơn
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    canvas = FigureCanvasTkAgg(fig, master=parent_frame)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill="both", expand=True)
