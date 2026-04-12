@@ -5,11 +5,11 @@ import tkinter as tk
 class RealtimeSimulator(ctk.CTkToplevel):
     def __init__(self, master, raw_data, gantt_data, aging_enabled=False, threshold=5):
         super().__init__(master)
-        self.title("🎬 Mô phỏng Priority Scheduling - Chế độ Step-by-Step")
+        self.title("Mô phỏng Priority Scheduling - Chế độ Step-by-Step")
         self.geometry("950x800")
         self.attributes('-topmost', True) 
         
-        # Ép giao diện sang chế độ Tối (Dark Mode) cho ngầu
+        # Ép giao diện sang chế độ Tối (Dark Mode)
         # ctk.set_appearance_mode("dark")
 
         self.raw_data = sorted(raw_data, key=lambda x: x['id'])

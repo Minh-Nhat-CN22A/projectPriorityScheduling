@@ -156,7 +156,7 @@ ctk.CTkOptionMenu(ctrl_frame, variable=algo_var, values=["Priority (Non-Preempti
 ctk.CTkButton(ctrl_frame, text="CHẠY", command=run, fg_color="green", width=100).grid(row=0, column=2, padx=5, pady=5)
 
 # Nút Gọi Mô Phỏng Real-time
-ctk.CTkButton(ctrl_frame, text="🎬 Mô phỏng Real-time", command=open_animation, fg_color="#3498db", width=150).grid(row=0, column=3, padx=10, pady=5)
+ctk.CTkButton(ctrl_frame, text="Mô phỏng", command=open_animation, fg_color="#3498db", width=150).grid(row=0, column=3, padx=10, pady=5)
 
 # 3. Khu vực Cài đặt Aging
 aging_frame = ctk.CTkFrame(app, fg_color="transparent")
