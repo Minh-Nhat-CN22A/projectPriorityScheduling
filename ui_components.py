@@ -1,8 +1,8 @@
-# ui_components.py - Các thành phần giao diện
+# ui_components.py - UI Components
 import customtkinter as ctk
 
 def create_input_row(parent, row_index, delete_callback):
-    """Tạo hàng nhập liệu có thêm nút Xóa"""
+    """Create an input row with a Delete button"""
     frame = ctk.CTkFrame(parent, fg_color="transparent")
     frame.grid(row=row_index, column=0, sticky="ew", pady=2)
     

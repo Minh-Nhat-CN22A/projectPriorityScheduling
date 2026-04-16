@@ -13,7 +13,7 @@ def draw_gantt_chart(parent_frame, raw_data, gantt_data, aging_enabled=False, th
         [p['arrival_time'] for p in raw_data]
     )))
     
-    fig, ax = plt.subplots(figsize=(10, 6.5)) # Tăng chiều cao thêm một chút
+    fig, ax = plt.subplots(figsize=(10, 6.5)) # Slightly increased height
     colors = list(mcolors.TABLEAU_COLORS.values())
     unique_ids = list(set(p['id'] for p in raw_data))
     color_map = {pid: colors[i % len(colors)] for i, pid in enumerate(unique_ids)}
@@ -37,23 +37,23 @@ def draw_gantt_chart(parent_frame, raw_data, gantt_data, aging_enabled=False, th
             ax.text(t, 25, ", ".join(arrived), ha='center', va='top', fontsize=9, color='blue', fontweight='bold')
         
         status_rem = []
-        status_prio = [] # MẢNG MỚI: Chứa thông tin Priority
+        status_prio = [] # NEW ARRAY: Contains Priority information
         
         for p in sorted(raw_data, key=lambda x: x['id']):
             if p['arrival_time'] <= t and current_rem[p['id']] > 0:
-                # 1. Thêm vào mảng Remaining
+                # 1. Add to Remaining array
                 status_rem.append(f"{p['id']}({current_rem[p['id']]})")
                 
-                # 2. TÍNH TOÁN AGING CHO DÒNG PRIORITY
+                # 2. CALCULATE AGING FOR PRIORITY ROW
                 current_prio = p['priority']
                 if aging_enabled:
-                    # Tính tổng thời gian đã được chạy từ lúc đến cho tới mốc t
+                    # Calculate total time executed since arrival up to time t
                     run_time = sum([min(s['end'], t) - max(s['start'], p['arrival_time']) 
                                   for s in gantt_data if s['id'] == p['id'] and s['start'] < t])
-                    # Tính thời gian phải đứng chờ (Wait Time)
+                    # Calculate total waiting time
                     wait_time = max(0, t - p['arrival_time'] - run_time)
                     
-                    # Cộng điểm ưu tiên (giảm số) dựa trên số lần vượt threshold
+                    # Boost priority (decrease number) based on threshold
                     boost = int(wait_time // threshold)
                     current_prio = max(1, p['priority'] - boost)
                 
@@ -79,7 +79,7 @@ def draw_gantt_chart(parent_frame, raw_data, gantt_data, aging_enabled=False, th
     ax.text(-0.5, 30, "Time:", ha='right', va='top', fontweight='bold')
     ax.text(-0.5, 25, "Arrived:", ha='right', va='top', fontweight='bold')
     ax.text(-0.5, 20, "Remaining:", ha='right', va='top', fontweight='bold')
-    ax.text(-0.5, 10, "Priority:", ha='right', va='top', fontweight='bold', color='purple') # THÊM NHÃN NÀY
+    ax.text(-0.5, 10, "Priority:", ha='right', va='top', fontweight='bold', color='purple') # ADDED THIS LABEL
 
     plt.tight_layout()
     canvas = FigureCanvasTkAgg(fig, master=parent_frame)
@@ -87,44 +87,44 @@ def draw_gantt_chart(parent_frame, raw_data, gantt_data, aging_enabled=False, th
     canvas.get_tk_widget().pack(fill="both", expand=True)
     
 def draw_comparison_chart(parent_frame, p_wt, p_tat, f_wt, f_tat, mode_name):
-    """Vẽ biểu đồ cột so sánh WT và TAT giữa Priority và FCFS"""
+    """Draw a bar chart comparing WT and TAT between Priority and FCFS"""
     for widget in parent_frame.winfo_children(): widget.destroy()
     
     fig, ax = plt.subplots(figsize=(8, 5))
     
-    # Dữ liệu
+    # Data
     labels = ['Average Waiting Time (WT)', 'Average Turnaround Time (TAT)']
     priority_scores = [p_wt, p_tat]
     fcfs_scores = [f_wt, f_tat]
     
-    x = [0, 1]  # Vị trí các nhóm cột
-    width = 0.35  # Độ rộng của cột
+    x = [0, 1]  # Position of bar groups
+    width = 0.35  # Width of bars
 
-    # Vẽ cột
-    bars1 = ax.bar([i - width/2 for i in x], priority_scores, width, label=mode_name, color='#3498db') # Màu xanh dương
-    bars2 = ax.bar([i + width/2 for i in x], fcfs_scores, width, label='FCFS', color='#e74c3c') # Màu đỏ
+    # Draw bars
+    bars1 = ax.bar([i - width/2 for i in x], priority_scores, width, label=mode_name, color='#3498db') # Blue
+    bars2 = ax.bar([i + width/2 for i in x], fcfs_scores, width, label='FCFS', color='#e74c3c') # Red
 
-    # Định dạng biểu đồ
-    ax.set_ylabel('Thời gian (Giây)', fontweight='bold')
-    ax.set_title('BIỂU ĐỒ SO SÁNH HIỆU NĂNG THUẬT TOÁN', fontweight='bold', fontsize=14, pad=15)
+    # Chart formatting
+    ax.set_ylabel('Time (Seconds)', fontweight='bold')
+    ax.set_title('ALGORITHM PERFORMANCE COMPARISON', fontweight='bold', fontsize=14, pad=15)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontweight='bold')
     ax.legend()
 
-    # Hiển thị con số trên đỉnh mỗi cột
+    # Display values on top of each bar
     def add_labels(bars):
         for bar in bars:
             height = bar.get_height()
             ax.annotate(f'{height}s',
                         xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3),  # Đẩy text lên 3 points
+                        xytext=(0, 3),  # Offset text up by 3 points
                         textcoords="offset points",
                         ha='center', va='bottom', fontweight='bold')
 
     add_labels(bars1)
     add_labels(bars2)
 
-    # Ẩn viền trên và phải cho biểu đồ thanh thoát hơn
+    # Hide top and right spines for a cleaner look
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 

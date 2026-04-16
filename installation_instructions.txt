@@ -1,0 +1,7 @@
+Step 1: Open the Terminal.
+
+Step 2: Install the necessary libraries using the command:
+pip install -r requirements.txt
+
+Step 3: Start the program:
+Run the command: python main.py
